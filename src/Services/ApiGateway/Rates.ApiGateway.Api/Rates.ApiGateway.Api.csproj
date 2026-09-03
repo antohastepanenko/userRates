@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Rates.ApiGateway.Api</RootNamespace>
+    <AssemblyName>Rates.ApiGateway.Api</AssemblyName>
+    <UserSecretsId>dotnet-Rates.ApiGateway.Api-7e0d2e6a-9d68-49e5-92e0-c7d6ab8a59c2</UserSecretsId>
+    <EnableDefaultApplicationInsights>false</EnableDefaultApplicationInsights>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\Rates.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / Rider / IntelliJ
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results and coverage
+TestResults/
+*.trx
+coverage/
+.coverage
+.coveragexml
+
+# NuGet and local tooling
+.nuget/
+packages/
+*.nupkg
+*.snupkg
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local Docker data
+pgdata/

@@ -1,0 +1,8 @@
+<Project>
+
+  <!--
+    Files shared by every project in the solution (rates-only MSBuild glue).
+    Project-specific references must stay in the csproj.
+  -->
+
+</Project>

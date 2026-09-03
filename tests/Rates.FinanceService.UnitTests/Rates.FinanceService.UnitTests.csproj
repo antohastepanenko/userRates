@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Rates.FinanceService.UnitTests</RootNamespace>
+    <AssemblyName>Rates.FinanceService.UnitTests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\Finance\Rates.FinanceService.Application\Rates.FinanceService.Application.csproj" />
+    <ProjectReference Include="..\..\src\Services\Finance\Rates.FinanceService.Domain\Rates.FinanceService.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Services\Finance\Rates.FinanceService.Infrastructure\Rates.FinanceService.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

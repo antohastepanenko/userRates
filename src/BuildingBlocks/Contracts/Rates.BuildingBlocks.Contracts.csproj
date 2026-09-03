@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Rates.BuildingBlocks.Contracts</RootNamespace>
+    <AssemblyName>Rates.BuildingBlocks.Contracts</AssemblyName>
+  </PropertyGroup>
+
+</Project>

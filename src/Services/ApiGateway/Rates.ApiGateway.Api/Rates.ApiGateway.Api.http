@@ -1,0 +1,6 @@
+@Rates.ApiGateway.Api_HostAddress = http://localhost:5283
+
+GET {{Rates.ApiGateway.Api_HostAddress}}/health/
+Accept: application/json
+
+###

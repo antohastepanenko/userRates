@@ -1,0 +1,27 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+trim_final_newlines = true
+
+[*.{csproj,props,targets,json,yml,yaml,xml,md}]
+indent_size = 2
+
+[*.cs]
+# .NET-style braces on the next line.
+csharp_new_line_before_open_brace = all
+
+# Match common .NET conventions.
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+dotnet_style_namespace_match_folder = true:suggestion
+dotnet_naming_rule.private_fields_underscore.severity = warning
+
+[*.{json,yml,yaml}]
+indent_size = 2

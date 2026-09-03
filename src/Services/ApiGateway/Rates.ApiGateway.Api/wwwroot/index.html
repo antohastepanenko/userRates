@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rates · Проверка сервиса</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Rates</h1>
+    <p class="subtitle">Простой UI для проверки API Gateway</p>
+  </header>
+
+  <main>
+    <!-- Auth view -->
+    <section id="view-auth" class="view">
+      <h2>Вход</h2>
+      <form id="auth-form" autocomplete="off">
+        <label>
+          Имя пользователя
+          <input id="auth-name" name="name" type="text" required minlength="2" maxlength="100" />
+        </label>
+        <label>
+          Пароль
+          <input id="auth-password" name="password" type="password" required minlength="6" />
+        </label>
+        <div class="actions">
+          <button type="submit" id="auth-login">Войти</button>
+          <button type="button" id="auth-register">Зарегистрироваться</button>
+        </div>
+        <p id="auth-error" class="error" hidden></p>
+      </form>
+    </section>
+
+    <!-- Account view -->
+    <section id="view-account" class="view" hidden>
+      <div class="account-header">
+        <div>
+          <h2 id="account-greeting">Профиль</h2>
+          <p id="account-meta" class="muted"></p>
+        </div>
+        <button type="button" id="account-logout">Выйти</button>
+      </div>
+
+      <section class="favorites">
+        <h3>Избранные валюты</h3>
+        <ul id="favorites-list" class="favorites-list">
+          <li class="muted">Загрузка…</li>
+        </ul>
+
+        <form id="add-favorite-form" class="add-form">
+          <label>
+            Добавить валюту
+            <select id="add-favorite-code" required>
+              <option value="">— выберите валюту —</option>
+            </select>
+          </label>
+          <button type="submit">Добавить</button>
+        </form>
+        <p id="favorites-error" class="error" hidden></p>
+        <p id="favorites-empty" class="muted" hidden>Список избранного пуст.</p>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <span class="muted">API: <code id="api-base">/api/v1</code></span>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

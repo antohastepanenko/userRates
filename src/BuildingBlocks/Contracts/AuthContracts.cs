@@ -17,7 +17,12 @@ public sealed record TokenResponse(
 
 public sealed record CurrentUserResponse(Guid Id, string Name, DateTimeOffset CreatedAt);
 
-public sealed record InternalFavoriteCodesResponse(Guid UserId, IReadOnlyList<string> Codes)
+public sealed record InternalFavoriteCodeDto(string Code, DateTimeOffset AddedAt);
+
+public sealed record InternalFavoriteCodesResponse(
+    Guid UserId,
+    IReadOnlyList<InternalFavoriteCodeDto> Items)
 {
-    public static InternalFavoriteCodesResponse Empty { get; } = new(Guid.Empty, Array.Empty<string>());
+    public static InternalFavoriteCodesResponse Empty { get; } =
+        new(Guid.Empty, Array.Empty<InternalFavoriteCodeDto>());
 }

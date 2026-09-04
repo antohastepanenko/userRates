@@ -21,9 +21,20 @@ public interface IUserRepository
 public interface IFavoritesRepository
 {
     Task<IReadOnlyList<string>> ListCodesAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Возвращает избранные валюты пользователя вместе с датой добавления. Используется
+    /// Finance-сервисом, чтобы вместе с курсом показать в UI «когда валюта добавлена».
+    /// </summary>
+    Task<IReadOnlyList<UserFavoriteSummary>> ListWithAddedAtAsync(
+        Guid userId,
+        CancellationToken cancellationToken);
+
     Task AddIfMissingAsync(Guid userId, string code, DateTimeOffset now, CancellationToken cancellationToken);
     Task<bool> RemoveAsync(Guid userId, string code, CancellationToken cancellationToken);
 }
+
+public sealed record UserFavoriteSummary(string Code, DateTimeOffset AddedAt);
 
 public interface IRefreshTokenRepository
 {

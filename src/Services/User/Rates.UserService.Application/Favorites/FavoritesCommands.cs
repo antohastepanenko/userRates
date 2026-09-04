@@ -28,9 +28,9 @@ public sealed class GetFavoriteCurrenciesQueryHandler : IRequestHandler<GetFavor
                 Error.Unauthorized("not_authenticated", "Authentication is required."));
         }
 
-        var codes = await _favorites.ListCodesAsync(_currentUser.UserId.Value, cancellationToken);
-        var view = codes
-            .Select(code => new FavoriteCurrencyView(code, DateTimeOffset.UtcNow))
+        var favorites = await _favorites.ListWithAddedAtAsync(_currentUser.UserId.Value, cancellationToken);
+        var view = favorites
+            .Select(f => new FavoriteCurrencyView(f.Code, f.AddedAt))
             .ToArray();
         return Result<IReadOnlyList<FavoriteCurrencyView>>.Ok(view);
     }

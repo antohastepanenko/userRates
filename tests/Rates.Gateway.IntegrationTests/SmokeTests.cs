@@ -227,7 +227,9 @@ public sealed class SmokeTests
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
         var document = await response.Content.ReadFromJsonAsync<JsonElement>();
         document.GetProperty("paths").TryGetProperty("/api/v1/auth/login", out _).Should().BeTrue();
-        document.GetProperty("paths").TryGetProperty("/api/v1/finance/currencies/me", out _).Should().BeTrue();
+        document.GetProperty("paths").TryGetProperty("/api/v1/finance/currencies", out _).Should().BeTrue();
+        document.GetProperty("paths").TryGetProperty("/api/v1/finance/me/favorites", out _).Should().BeTrue();
+        document.GetProperty("paths").TryGetProperty("/api/v1/finance/currencies/me", out _).Should().BeFalse();
         document.GetProperty("paths").TryGetProperty("/internal/v1/users/{userId}/favorite-codes", out _).Should().BeFalse();
         document.GetProperty("components").GetProperty("securitySchemes").TryGetProperty("Bearer", out _).Should().BeTrue();
     }

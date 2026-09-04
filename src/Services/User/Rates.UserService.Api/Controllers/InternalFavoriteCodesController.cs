@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Rates.BuildingBlocks.Contracts;
 using Rates.BuildingBlocks.Domain;
@@ -14,7 +13,6 @@ namespace Rates.UserService.Api.Controllers;
 /// и требует общий внутренний служебный токен.
 /// </summary>
 [ApiController]
-[AllowAnonymous]
 [Route("internal/v1/users/{userId:guid}/favorite-codes")]
 public sealed class InternalFavoriteCodesController : ControllerBase
 {
@@ -48,7 +46,10 @@ public sealed class InternalFavoriteCodesController : ControllerBase
             return ProblemFrom(result.Error);
         }
 
-        return Ok(new InternalFavoriteCodesResponse(userId, result.Value.ToArray()));
+        var items = result.Value
+            .Select(f => new InternalFavoriteCodeDto(f.Code, f.AddedAt))
+            .ToArray();
+        return Ok(new InternalFavoriteCodesResponse(userId, items));
     }
 
     private IActionResult ProblemFrom(Error error)

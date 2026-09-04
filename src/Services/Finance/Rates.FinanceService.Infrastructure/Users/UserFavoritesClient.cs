@@ -40,13 +40,13 @@ public sealed class UserFavoritesClient : IUserFavoritesClient
         _http.BaseAddress = new Uri(uri.ToString().TrimEnd('/') + "/", UriKind.Absolute);
     }
 
-    public async Task<Result<IReadOnlyList<string>>> GetFavoriteCodesAsync(
+    public async Task<Result<IReadOnlyList<FavoriteEntry>>> GetFavoritesAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
         if (userId == Guid.Empty)
         {
-            return Result<IReadOnlyList<string>>.Failure(
+            return Result<IReadOnlyList<FavoriteEntry>>.Failure(
                 Error.Validation("invalid_user_id", "userId must be supplied."));
         }
 
@@ -63,11 +63,14 @@ public sealed class UserFavoritesClient : IUserFavoritesClient
                 var payload = await response.Content.ReadFromJsonAsync<InternalFavoriteCodesResponse>(cancellationToken);
                 if (payload is null)
                 {
-                    return Result<IReadOnlyList<string>>.Failure(
+                    return Result<IReadOnlyList<FavoriteEntry>>.Failure(
                         Error.Unavailable("user_service_invalid_response", "UserService returned an empty response."));
                 }
 
-                return Result<IReadOnlyList<string>>.Ok(payload.Codes);
+                var entries = payload.Items
+                    .Select(item => new FavoriteEntry(item.Code, item.AddedAt))
+                    .ToArray();
+                return Result<IReadOnlyList<FavoriteEntry>>.Ok(entries);
             }
 
             var error = response.StatusCode switch
@@ -82,24 +85,24 @@ public sealed class UserFavoritesClient : IUserFavoritesClient
                 "UserService favorites request failed for {UserId}: {StatusCode}",
                 userId,
                 response.StatusCode);
-            return Result<IReadOnlyList<string>>.Failure(error);
+            return Result<IReadOnlyList<FavoriteEntry>>.Failure(error);
         }
         catch (BrokenCircuitException ex)
         {
             _logger.LogWarning(ex, "UserService circuit is open while reading favorites for {UserId}", userId);
-            return Result<IReadOnlyList<string>>.Failure(
+            return Result<IReadOnlyList<FavoriteEntry>>.Failure(
                 Error.Unavailable("user_service_circuit_open", "UserService is temporarily unavailable."));
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "UserService is unreachable while reading favorites for {UserId}", userId);
-            return Result<IReadOnlyList<string>>.Failure(
+            return Result<IReadOnlyList<FavoriteEntry>>.Failure(
                 Error.Unavailable("user_service_unavailable", "UserService is temporarily unavailable."));
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning("UserService timed out while reading favorites for {UserId}", userId);
-            return Result<IReadOnlyList<string>>.Failure(
+            return Result<IReadOnlyList<FavoriteEntry>>.Failure(
                 Error.Unavailable("user_service_timeout", "UserService request timed out."));
         }
     }

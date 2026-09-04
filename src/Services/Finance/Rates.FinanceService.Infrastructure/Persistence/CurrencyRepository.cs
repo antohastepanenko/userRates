@@ -56,10 +56,31 @@ public sealed class CurrencyRepository : IRepository<Currency>, ICurrencyLookup
             .OrderBy(c => c.Code)
             .ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Возвращает по одной самой свежей записи на каждый код валюты. Если у одного кода
+    /// есть несколько записей с одинаковой максимальной датой, берётся запись с максимальным
+    /// <c>updated_at</c>
+    /// </summary>
+    public async Task<List<Currency>> ListLatestAsync(CancellationToken cancellationToken = default)
+    {
+        var query = _db.Currencies
+            .AsNoTracking()
+            .Where(c => !_db.Currencies.Any(c2 =>
+                c2.Code == c.Code &&
+                (c2.RateDate > c.RateDate ||
+                 (c2.RateDate == c.RateDate && c2.UpdatedAt > c.UpdatedAt) ||
+                 (c2.RateDate == c.RateDate && c2.UpdatedAt == c.UpdatedAt && c2.Id > c.Id))))
+            .OrderBy(c => c.Code);
+
+        var currencies = await query.ToListAsync(cancellationToken);
+        return currencies;
+    }
 }
 
 public interface ICurrencyLookup
 {
     Task<Currency?> FindByCodeAsync(string code, CancellationToken cancellationToken = default);
     Task<List<Currency>> ListByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken cancellationToken = default);
+    Task<List<Currency>> ListLatestAsync(CancellationToken cancellationToken = default);
 }

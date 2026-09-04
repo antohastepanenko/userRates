@@ -33,6 +33,23 @@ public sealed class EfFavoritesRepository : IFavoritesRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<UserFavoriteSummary>> ListWithAddedAtAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            return Array.Empty<UserFavoriteSummary>();
+        }
+
+        return await _db.UserFavoriteCurrencies
+            .AsNoTracking()
+            .Where(f => f.UserId == userId)
+            .OrderBy(f => f.CurrencyCode)
+            .Select(f => new UserFavoriteSummary(f.CurrencyCode, f.AddedAt))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddIfMissingAsync(Guid userId, string code, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var exists = await _db.UserFavoriteCurrencies

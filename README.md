@@ -73,8 +73,11 @@ docker compose up --build
 - Просмотр профиля (`GET /api/v1/users/me`).
 - Список избранных валют (`GET /api/v1/users/me/favorites`).
 - Добавление (`PUT /api/v1/users/me/favorites/{code}`) и удаление (`DELETE /api/v1/users/me/favorites/{code}`).
-- Выпадающий список доступных валют подгружается из `GET /api/v1/finance/currencies/me`, поэтому
-  справочник должен быть заполнен `rates-worker`. До первой синхронизации список будет пуст.
+- Выпадающий список доступных валют подгружается из `GET /api/v1/finance/currencies` — это
+  полный каталог из таблицы `currency`, который должен быть заполнен `rates-worker`. До первой
+  синхронизации список будет пуст.
+- Курсы только по избранным валютам пользователя отдаются отдельным эндпоинтом
+  `GET /api/v1/finance/me/favorites`. В UI он сейчас не используется.
 - При ответе `401` access-токен считается недействительным — клиент чистит `localStorage`
   и возвращается на экран логина.
 
@@ -100,20 +103,49 @@ docker compose up --build
    - Удаление — кнопкой «Удалить» у соответствующего элемента.
 5. «Выйти» отзывает refresh-токен на сервере и очищает локальные токены.
 
-### Локальный запуск только UI без Docker
+### Локальный запуск без docker
 
-Если Postgres и сервисы уже подняты иным способом, можно запустить шлюз локально:
+Если Postgres и сервисы поднимаются локально без Docker (например, через установленный на хосте
+Postgres), запускайте проекты по очереди в отдельных терминалах.
+
+Сначала примените миграции — `MigrationService` завершится сам после успешного применения:
 
 ```bash
 export ASPNETCORE_ENVIRONMENT=Development
 export ConnectionStrings__IdentityDb="Host=localhost;Database=rates_identity;Username=rates;Password=rates"
 export ConnectionStrings__FinanceDb="Host=localhost;Database=rates_finance;Username=rates;Password=rates"
 export Jwt__SigningKey="dev-only-do-not-use-in-production-1234567890"
+
+dotnet run --project src/Services/Migration/Rates.MigrationService.Host
+```
+
+Затем в отдельных терминалах поднимите остальные сервисы (все используют те же переменные окружения):
+
+```bash
+dotnet run --project src/Services/User/Rates.UserService.Api
+```
+
+```bash
+dotnet run --project src/Services/Finance/Rates.FinanceService.Api
+```
+
+```bash
+dotnet run --project src/Services/RatesWorker/Rates.RatesWorker.Host
+```
+
+```bash
 dotnet run --project src/Services/ApiGateway/Rates.ApiGateway.Api
 ```
 
-UI будет доступен по тому же адресу: <http://localhost:8080/> (или на порту из
-`Properties/launchSettings.json`, если запускать без переменной `ASPNETCORE_URLS`).
+Точки входа после старта:
+
+* Шлюз (UI и публичные маршруты): <http://localhost:8080/>
+* UserService (напрямую): <http://localhost:5101/swagger>
+* FinanceService (напрямую): <http://localhost:5102/swagger>
+* Postgres: `localhost:5432` (`rates` / `rates`)
+
+Если `ASPNETCORE_URLS` не задан, каждый сервис использует порт из собственного
+`Properties/launchSettings.json`.
 
 ## Публичные конечные точки (через шлюз)
 
@@ -131,7 +163,8 @@ UI будет доступен по тому же адресу: <http://localhos
 | GET  | `/api/v1/users/me/favorites` | Получить список кодов избранных валют. |
 | PUT  | `/api/v1/users/me/favorites/{code}` | Добавить валюту в избранное. |
 | DELETE | `/api/v1/users/me/favorites/{code}` | Удалить валюту из избранного. |
-| GET | `/api/v1/finance/currencies/me` | Получить валюты для аутентифицированного пользователя. |
+| GET | `/api/v1/finance/currencies` | Полный каталог валют с последним известным курсом по каждой. |
+| GET | `/api/v1/finance/me/favorites` | Курсы только по избранным валютам текущего пользователя. |
 | GET | `/health` | Локальная liveness-проверка шлюза. |
 | GET | `/health/ready` | Readiness-проверка UserService и FinanceService. |
 

@@ -9,7 +9,8 @@ public sealed record CurrencyRateDto(
     string Name,
     decimal Rate,
     decimal Nominal,
-    DateOnly RateDate);
+    DateOnly RateDate,
+    DateTimeOffset? AddedAt = null);
 
 public sealed record CurrencyRatesResponse(DateOnly? AsOf, IReadOnlyList<CurrencyRateDto> Items)
 {

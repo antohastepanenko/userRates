@@ -203,9 +203,20 @@ button:disabled {
   font-weight: 600;
 }
 
+.favorite-name {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.favorite-rate {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  margin-top: 0.15rem;
+}
+
 .favorite-meta {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .add-form {

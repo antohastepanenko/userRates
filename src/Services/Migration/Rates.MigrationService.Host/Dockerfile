@@ -11,11 +11,10 @@ RUN dotnet publish "src/Services/Migration/Rates.MigrationService.Host/Rates.Mig
     --output /app/publish \
     --framework net8.0
 
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish ./
 
-ENV DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 ENTRYPOINT ["dotnet", "Rates.MigrationService.Host.dll"]

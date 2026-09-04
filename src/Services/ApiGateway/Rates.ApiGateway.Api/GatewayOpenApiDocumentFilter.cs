@@ -108,11 +108,18 @@ public sealed class GatewayOpenApiDocumentFilter : IDocumentFilter
 
     private static void AddFinancePaths(OpenApiPaths paths)
     {
-        paths["/api/v1/finance/currencies/me"] = new OpenApiPathItem
+        paths["/api/v1/finance/currencies"] = new OpenApiPathItem
         {
             Operations =
             {
-                [OperationType.Get] = CreateOperation("Get rates for favorite currencies", requiresAuthentication: true),
+                [OperationType.Get] = CreateOperation("List all currencies with their latest rates", requiresAuthentication: true),
+            },
+        };
+        paths["/api/v1/finance/me/favorites"] = new OpenApiPathItem
+        {
+            Operations =
+            {
+                [OperationType.Get] = CreateOperation("Get rates for the current user's favorite currencies", requiresAuthentication: true),
             },
         };
     }

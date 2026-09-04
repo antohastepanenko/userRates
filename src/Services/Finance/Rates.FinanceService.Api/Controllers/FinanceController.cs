@@ -14,7 +14,7 @@ namespace Rates.FinanceService.Api.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
-[Route("api/v1/finance/currencies")]
+[Route("api/v1/finance")]
 public sealed class FinanceController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -26,8 +26,31 @@ public sealed class FinanceController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUserRatesAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Полный каталог валют с последним известным курсом по каждой. Используется UI
+    /// для построения выпадающего списка доступных валют.
+    /// </summary>
+    [HttpGet("currencies")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllCurrenciesAsync(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetLatestCurrencyRatesQuery(), cancellationToken);
+        if (result.IsFailure)
+        {
+            return ProblemFrom(result.Error);
+        }
+
+        var response = new CurrencyRatesResponse(result.Value.AsOf, result.Value.Items);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Курсы только по избранным валютам текущего пользователя. Список избранного
+    /// запрашивается в UserService; коды, отсутствующие в каталоге, возвращаются в
+    /// <c>missingCodes</c>, чтобы UI мог их визуально выделить.
+    /// </summary>
+    [HttpGet("me/favorites")]
+    public async Task<IActionResult> GetUserFavoriteRatesAsync(CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetUserCurrencyRatesQuery(), cancellationToken);
         if (result.IsFailure)

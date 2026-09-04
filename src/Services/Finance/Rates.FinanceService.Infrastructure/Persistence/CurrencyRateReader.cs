@@ -21,4 +21,9 @@ public sealed class CurrencyRateReader : ICurrencyRateReader
     {
         return await _repository.ListByCodesAsync(codes, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Currency>> ListLatestAsync(CancellationToken cancellationToken)
+    {
+        return await _repository.ListLatestAsync(cancellationToken);
+    }
 }

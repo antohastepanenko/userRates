@@ -16,8 +16,7 @@ WORKDIR /app
 COPY --from=build /app/publish ./
 
 ENV ASPNETCORE_URLS=http://+:8080 \
-    DOTNET_RUNNING_IN_CONTAINER=true \
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+    DOTNET_RUNNING_IN_CONTAINER=true
 
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Rates.UserService.Api.dll"]

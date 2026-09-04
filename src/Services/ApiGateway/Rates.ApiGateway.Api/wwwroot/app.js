@@ -144,7 +144,7 @@
   }
 
   async function loadFavorites() {
-    const data = await request("/users/me/favorites");
+    const data = await request("/finance/me/favorites");
     const items = data?.items ?? [];
     renderFavorites(items);
   }
@@ -153,7 +153,7 @@
     const select = els.addFavoriteCode;
     select.innerHTML = '<option value="">Загрузка…</option>';
     try {
-      const data = await request("/finance/currencies/me");
+      const data = await request("/finance/currencies");
       const items = data?.items ?? [];
       populateAvailableCurrencies(items);
     } catch (err) {
@@ -186,6 +186,17 @@
     }
   }
 
+  function formatRate(item) {
+    if (item.rate === undefined || item.rate === null) return "—";
+    const nominal = item.nominal && item.nominal !== 1 ? item.nominal : null;
+    const value = nominal ? item.rate / nominal : item.rate;
+    const formatted = value.toLocaleString("ru-RU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    });
+    return `${formatted} ₽`;
+  }
+
   function renderFavorites(items) {
     els.favoritesList.innerHTML = "";
     if (!items.length) {
@@ -197,13 +208,29 @@
       const li = document.createElement("li");
 
       const left = document.createElement("div");
+      const header = document.createElement("div");
       const code = document.createElement("span");
       code.className = "favorite-code";
       code.textContent = item.code;
+      const name = document.createElement("span");
+      name.className = "favorite-name";
+      name.textContent = item.name ? ` ${item.name}` : "";
+      header.append(code, name);
+
+      const rate = document.createElement("div");
+      rate.className = "favorite-rate";
+      rate.textContent = formatRate(item);
+
       const meta = document.createElement("span");
       meta.className = "favorite-meta";
-      meta.textContent = item.addedAt ? ` · добавлена ${new Date(item.addedAt).toLocaleDateString()}` : "";
-      left.append(code, meta);
+      const addedAtText = item.addedAt
+        ? ` · добавлена ${new Date(item.addedAt).toLocaleDateString()}`
+        : "";
+      meta.textContent = addedAtText;
+
+      const text = document.createElement("div");
+      text.append(header, rate, meta);
+      left.append(text);
 
       const remove = document.createElement("button");
       remove.type = "button";

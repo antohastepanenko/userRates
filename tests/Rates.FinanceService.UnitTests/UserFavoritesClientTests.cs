@@ -11,29 +11,32 @@ namespace Rates.FinanceService.UnitTests;
 public sealed class UserFavoritesClientTests
 {
     private const string InternalToken = "unit-test-internal-service-token";
+    private static readonly Guid UserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     [Fact]
-    public async Task Sends_internal_token_and_returns_codes()
+    public async Task Sends_internal_token_and_returns_codes_with_added_at()
     {
         var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                "{\"userId\":\"11111111-1111-1111-1111-111111111111\",\"codes\":[\"USD\",\"EUR\"]}",
+                """{"userId":"11111111-1111-1111-1111-111111111111","items":[{"code":"USD","addedAt":"2026-09-04T10:00:00+00:00"},{"code":"EUR","addedAt":"2026-09-04T10:05:00+00:00"}]}""",
                 Encoding.UTF8,
                 "application/json"),
         });
         var client = CreateClient(handler);
-        var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-        var result = await client.GetFavoriteCodesAsync(userId, CancellationToken.None);
+        var result = await client.GetFavoritesAsync(UserId, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Equal("USD", "EUR");
+        result.Value.Select(f => f.Code).Should().Equal("USD", "EUR");
+        result.Value.Select(f => f.AddedAt).Should().Equal(
+            new DateTimeOffset(2026, 9, 4, 10, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 9, 4, 10, 5, 0, TimeSpan.Zero));
         handler.LastRequest.Should().NotBeNull();
         handler.LastRequest!.Headers.GetValues("X-Internal-Service-Token")
             .Single().Should().Be(InternalToken);
         handler.LastRequest.RequestUri!.AbsolutePath.Should()
-            .Be($"/internal/v1/users/{userId:D}/favorite-codes");
+            .Be($"/internal/v1/users/{UserId:D}/favorite-codes");
     }
 
     [Fact]
@@ -42,8 +45,7 @@ public sealed class UserFavoritesClientTests
         var handler = new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
         var client = CreateClient(handler);
 
-        var result = await client.GetFavoriteCodesAsync(
-            Guid.Parse("11111111-1111-1111-1111-111111111111"), CancellationToken.None);
+        var result = await client.GetFavoritesAsync(UserId, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("user_not_found");
@@ -56,8 +58,7 @@ public sealed class UserFavoritesClientTests
         var client = CreateClient(handler);
 
         using var timeout = new CancellationTokenSource();
-        var result = await client.GetFavoriteCodesAsync(
-            Guid.Parse("11111111-1111-1111-1111-111111111111"), timeout.Token);
+        var result = await client.GetFavoritesAsync(UserId, timeout.Token);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("user_service_timeout");

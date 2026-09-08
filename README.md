@@ -6,7 +6,7 @@
 
 | Компонент | Назначение |
 |---|---|
-| `Rates.MigrationService.Host` | Одноразовый процесс, применяющий миграции EF Core к обеим базам данных — `Identity` и `Finance`. |
+| `Rates.MigrationService.Host` | Одноразовый процесс, применяющий миграции EF Core к общей базе `rates`. |
 | `Rates.UserService.Api` | Регистрация, вход, обновление и выход с использованием JWT; управление избранными валютами пользователя. |
 | `Rates.FinanceService.Api` | Возвращает избранные валюты аутентифицированного пользователя из таблицы `currency`, заполняемой worker-процессом. |
 | `Rates.RatesWorker.Host` | Периодически получает ежедневные курсы из XML-ленты Центрального банка России и добавляет или обновляет их в таблице `currency`. |
@@ -16,7 +16,7 @@
 
 ```
 src/
-├── BuildingBlocks/           # Общие абстракции (Domain / Application / Infrastructure / Contracts)
+├── BuildingBlocks/           # Общие абстракции (Domain / Application / Infrastructure / Persistence / Contracts)
 └── Services/
     ├── Migration/            # MigrationService.Application / Infrastructure / Host
     ├── User/                 # UserService.Domain / Application / Infrastructure / Api
@@ -112,8 +112,7 @@ Postgres), запускайте проекты по очереди в отдел
 
 ```bash
 export ASPNETCORE_ENVIRONMENT=Development
-export ConnectionStrings__IdentityDb="Host=localhost;Database=rates_identity;Username=rates;Password=rates"
-export ConnectionStrings__FinanceDb="Host=localhost;Database=rates_finance;Username=rates;Password=rates"
+export ConnectionStrings__Rates="Host=localhost;Database=rates;Username=rates;Password=rates"
 export Jwt__SigningKey="dev-only-do-not-use-in-production-1234567890"
 
 dotnet run --project src/Services/Migration/Rates.MigrationService.Host
@@ -168,9 +167,10 @@ dotnet run --project src/Services/ApiGateway/Rates.ApiGateway.Api
 | GET | `/health` | Локальная liveness-проверка шлюза. |
 | GET | `/health/ready` | Readiness-проверка UserService и FinanceService. |
 
-Маршрут `/internal/**` намеренно отсутствует в конфигурации шлюза. Внутренняя конечная
-точка UserService для favorites доступна только в приватной сети и требует заголовок
-`X-Internal-Service-Token`.
+Маршруты `/internal/**` намеренно отсутствуют в конфигурации шлюза и в публичных API.
+FinanceService получает избранное пользователя прямым JOIN к общей БД (таблица
+`user_favorite_currency`), без HTTP-вызовов в UserService. Это снимает необходимость
+внутреннего токена и снижает latency.
 
 ### Политики шлюза
 

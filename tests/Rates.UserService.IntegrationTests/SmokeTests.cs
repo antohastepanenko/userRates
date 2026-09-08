@@ -1,11 +1,16 @@
+using FluentAssertions;
+
 namespace Rates.UserService.IntegrationTests;
 
 /// <summary>
-/// Заглушка этапа 2. На этапах 5/8 будут добавлены реальные интеграционные тесты
-/// на базе WebApplicationFactory + Testcontainers для PostgreSQL.
+/// Лёгкая проверка композиции UserService Api. Полные сценарии с WebApplicationFactory
+/// и Postgres будут добавлены после включения CI-фикстуры с базой.
 /// </summary>
 public sealed class SmokeTests
 {
-    [Fact(Skip = "Awaiting Stage 5: WebApplicationFactory + Postgres fixture")]
-    public void Placeholder() => Assert.True(true);
+    [Fact]
+    public void User_api_assembly_contains_public_entry_point()
+    {
+        typeof(Program).Assembly.GetName().Name.Should().Be("Rates.UserService.Api");
+    }
 }

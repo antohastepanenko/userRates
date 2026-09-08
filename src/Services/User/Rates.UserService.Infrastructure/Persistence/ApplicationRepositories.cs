@@ -1,17 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using Rates.BuildingBlocks.Persistence;
 using Rates.UserService.Application;
 using Rates.UserService.Domain;
 
 namespace Rates.UserService.Infrastructure.Persistence;
 
-public sealed class UserRepository : IUserRepository
+/// <summary>
+/// Реализация <see cref="IUserRepository"/> поверх общего <see cref="RatesDbContext"/>.
+/// </summary>
+public sealed class UserRepository(RatesDbContext db) : IUserRepository
 {
-    private readonly IdentityDbContext _db;
-
-    public UserRepository(IdentityDbContext db)
-    {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
-    }
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
 
     public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
@@ -33,14 +32,12 @@ public sealed class UserRepository : IUserRepository
     }
 }
 
-public sealed class EfRefreshTokenRepository : IRefreshTokenRepository
+/// <summary>
+/// Реализация <see cref="IRefreshTokenRepository"/> поверх общего контекста.
+/// </summary>
+public sealed class EfRefreshTokenRepository(RatesDbContext db) : IRefreshTokenRepository
 {
-    private readonly IdentityDbContext _db;
-
-    public EfRefreshTokenRepository(IdentityDbContext db)
-    {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
-    }
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
 
     public async Task AddAsync(RefreshToken token, CancellationToken cancellationToken)
     {
@@ -55,9 +52,10 @@ public sealed class EfRefreshTokenRepository : IRefreshTokenRepository
             return Task.FromResult<RefreshToken?>(null);
         }
 
-        var hash = Rates.UserService.Infrastructure.Auth.RefreshTokenService.Hash(plainToken);
-        return _db.RefreshTokens
-            .FirstOrDefaultAsync(t => t.TokenHash == hash && t.RevokedAt == null && t.ExpiresAt > DateTimeOffset.UtcNow, cancellationToken);
+        var hash = Application.Auth.RefreshTokenService.Hash(plainToken);
+        return _db.RefreshTokens.FirstOrDefaultAsync(
+            t => t.TokenHash == hash && t.RevokedAt == null && t.ExpiresAt > DateTimeOffset.UtcNow,
+            cancellationToken);
     }
 
     public async Task RevokeAsync(Guid tokenId, DateTimeOffset now, Guid? replacedById, CancellationToken cancellationToken)

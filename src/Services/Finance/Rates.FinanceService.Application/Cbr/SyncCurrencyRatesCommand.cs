@@ -11,18 +11,14 @@ public sealed record SyncCurrencyRatesCommand(CbrDailyRates Rates) : ICommand<Re
 
 public sealed record SyncCurrencyRatesResult(int UpsertedCount, DateOnly RateDate);
 
-public sealed class SyncCurrencyRatesCommandHandler : IRequestHandler<SyncCurrencyRatesCommand, Result<SyncCurrencyRatesResult>>
+public sealed class SyncCurrencyRatesCommandHandler(ICurrencySyncRepository repository)
+    : IRequestHandler<SyncCurrencyRatesCommand, Result<SyncCurrencyRatesResult>>
 {
-    private readonly ICurrencySyncRepository _repository;
-
-    public SyncCurrencyRatesCommandHandler(ICurrencySyncRepository repository)
-    {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-    }
+    private readonly ICurrencySyncRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
     public async Task<Result<SyncCurrencyRatesResult>> Handle(SyncCurrencyRatesCommand request, CancellationToken cancellationToken)
     {
-        if (request.Rates is null || request.Rates.Entries.Count == 0)
+        if (request.Rates.Entries.Count == 0)
         {
             return Result<SyncCurrencyRatesResult>.Failure(
                 Error.Validation("no_rates", "Nothing to sync: rates payload is empty."));

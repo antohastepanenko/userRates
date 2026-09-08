@@ -9,16 +9,11 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Polly.Extensions" />
-    <PackageReference Include="Polly.Extensions.Http" />
     <PackageReference Include="System.Text.Encoding.CodePages" />
   </ItemGroup>
 
@@ -27,8 +22,8 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Contracts\Rates.BuildingBlocks.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Domain\Rates.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\Rates.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Rates.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\Rates.FinanceService.Application\Rates.FinanceService.Application.csproj" />
     <ProjectReference Include="..\Rates.FinanceService.Domain\Rates.FinanceService.Domain.csproj" />
   </ItemGroup>
-
 </Project>

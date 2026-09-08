@@ -4,25 +4,70 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Rates.UserService.Infrastructure.Persistence;
+using Rates.BuildingBlocks.Persistence;
 
 #nullable disable
 
-namespace Rates.UserService.Infrastructure.Persistence.Migrations
+namespace Rates.BuildingBlocks.Persistence.Migrations
 {
-    [DbContext(typeof(IdentityDbContext))]
-    partial class IdentityDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(RatesDbContext))]
+    partial class RatesDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("identity")
                 .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "uuid-ossp");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Rates.FinanceService.Domain.Currency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Nominal")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("nominal");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("numeric(18,8)")
+                        .HasColumnName("rate");
+
+                    b.Property<DateOnly>("RateDate")
+                        .HasColumnType("date")
+                        .HasColumnName("rate_date");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_currency_code");
+
+                    b.HasIndex("RateDate")
+                        .HasDatabaseName("ix_currency_rate_date");
+
+                    b.ToTable("currency", (string)null);
+                });
 
             modelBuilder.Entity("Rates.UserService.Domain.RefreshToken", b =>
                 {
@@ -50,7 +95,7 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("text")
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("token_hash");
 
                     b.Property<Guid>("UserId")
@@ -66,7 +111,7 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_refresh_token_user_id");
 
-                    b.ToTable("refresh_token", "identity");
+                    b.ToTable("refresh_token", (string)null);
                 });
 
             modelBuilder.Entity("Rates.UserService.Domain.User", b =>
@@ -83,13 +128,13 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("text")
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -102,7 +147,7 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_name");
 
-                    b.ToTable("user", "identity");
+                    b.ToTable("user", (string)null);
                 });
 
             modelBuilder.Entity("Rates.UserService.Domain.UserFavoriteCurrency", b =>
@@ -119,7 +164,7 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
                     b.Property<string>("CurrencyCode")
                         .IsRequired()
                         .HasMaxLength(3)
-                        .HasColumnType("text")
+                        .HasColumnType("character varying(3)")
                         .HasColumnName("currency_code");
 
                     b.Property<Guid>("UserId")
@@ -128,11 +173,38 @@ namespace Rates.UserService.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CurrencyCode");
+
                     b.HasIndex("UserId", "CurrencyCode")
                         .IsUnique()
                         .HasDatabaseName("ix_user_favorite_currency_user_code");
 
-                    b.ToTable("user_favorite_currency", "identity");
+                    b.ToTable("user_favorite_currency", (string)null);
+                });
+
+            modelBuilder.Entity("Rates.UserService.Domain.RefreshToken", b =>
+                {
+                    b.HasOne("Rates.UserService.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Rates.UserService.Domain.UserFavoriteCurrency", b =>
+                {
+                    b.HasOne("Rates.FinanceService.Domain.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyCode")
+                        .HasPrincipalKey("Code")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Rates.UserService.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

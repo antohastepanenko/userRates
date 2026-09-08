@@ -10,15 +10,20 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
+    <PackageReference Include="Npgsql" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\Persistence\Rates.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Services\User\Rates.UserService.Application\Rates.UserService.Application.csproj" />
     <ProjectReference Include="..\..\src\Services\User\Rates.UserService.Domain\Rates.UserService.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Services\User\Rates.UserService.Infrastructure\Rates.UserService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Services\Finance\Rates.FinanceService.Domain\Rates.FinanceService.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

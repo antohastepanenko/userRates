@@ -2,7 +2,6 @@ using MediatR;
 using Rates.BuildingBlocks.Application;
 using Rates.BuildingBlocks.Contracts;
 using Rates.BuildingBlocks.Domain;
-using Rates.FinanceService.Application.Users;
 
 namespace Rates.FinanceService.Application.Currencies;
 
@@ -18,8 +17,9 @@ public sealed record UserCurrencyRatesView(
     IReadOnlyList<CurrencyRateDto> Items,
     IReadOnlyList<string> MissingCodes);
 
-public sealed class GetUserCurrencyRatesQueryHandler
-    : IRequestHandler<GetUserCurrencyRatesQuery, Result<UserCurrencyRatesView>>
+public sealed class GetUserCurrencyRatesQueryHandler(
+    ICurrentUser currentUser,
+    IFavoritesLookup favorites) : IRequestHandler<GetUserCurrencyRatesQuery, Result<UserCurrencyRatesView>>
 {
     /// <summary>
     /// Количество знаков после запятой для UI. ЦБ РФ публикует до 4 знаков; пользователю
@@ -27,79 +27,49 @@ public sealed class GetUserCurrencyRatesQueryHandler
     /// </summary>
     internal const int DisplayRateDecimals = 4;
 
-    private readonly ICurrentUser _currentUser;
-    private readonly IUserFavoritesClient _favoritesClient;
-    private readonly ICurrencyRateReader _currencyRates;
-
-    public GetUserCurrencyRatesQueryHandler(
-        ICurrentUser currentUser,
-        IUserFavoritesClient favoritesClient,
-        ICurrencyRateReader currencyRates)
-    {
-        _currentUser = currentUser;
-        _favoritesClient = favoritesClient;
-        _currencyRates = currencyRates;
-    }
-
     public async Task<Result<UserCurrencyRatesView>> Handle(
         GetUserCurrencyRatesQuery request,
         CancellationToken cancellationToken)
     {
-        if (!_currentUser.IsAuthenticated || _currentUser.UserId is null)
+        if (!currentUser.IsAuthenticated || currentUser.UserId is null)
         {
             return Result<UserCurrencyRatesView>.Failure(
                 Error.Unauthorized("not_authenticated", "Authentication is required."));
         }
 
-        var favoritesResult = await _favoritesClient.GetFavoritesAsync(
-            _currentUser.UserId.Value,
-            cancellationToken);
-        if (favoritesResult.IsFailure)
-        {
-            return Result<UserCurrencyRatesView>.Failure(favoritesResult.Error);
-        }
-
-        var orderedFavorites = favoritesResult.Value
-            .Where(entry => !string.IsNullOrWhiteSpace(entry.Code))
-            .Select(entry => new FavoriteEntry(entry.Code.Trim().ToUpperInvariant(), entry.AddedAt))
-            .DistinctBy(entry => entry.Code, StringComparer.Ordinal)
-            .OrderBy(entry => entry.Code, StringComparer.Ordinal)
-            .ToArray();
-
-        if (orderedFavorites.Length == 0)
+        var entries = await favorites.ListByUserAsync(currentUser.UserId.Value, cancellationToken);
+        if (entries.Count == 0)
         {
             return Result<UserCurrencyRatesView>.Ok(
                 new UserCurrencyRatesView(null, Array.Empty<CurrencyRateDto>(), Array.Empty<string>()));
         }
 
-        var codes = orderedFavorites.Select(entry => entry.Code).ToArray();
-        var addedAtByCode = orderedFavorites.ToDictionary(entry => entry.Code, entry => entry.AddedAt, StringComparer.Ordinal);
+        var items = new List<CurrencyRateDto>(entries.Count);
+        var missingCodes = new List<string>();
 
-        var currencies = await _currencyRates.ListByCodesAsync(codes, cancellationToken);
-        var currencyByCode = currencies.ToDictionary(currency => currency.Code, StringComparer.Ordinal);
-
-        var items = orderedFavorites
-            .Where(entry => currencyByCode.ContainsKey(entry.Code))
-            .Select(entry =>
+        foreach (var entry in entries)
+        {
+            if (entry.Rate is null)
             {
-                var currency = currencyByCode[entry.Code];
-                return new CurrencyRateDto(
-                    currency.Code,
-                    currency.Name,
-                    Math.Round(currency.Rate, DisplayRateDecimals, MidpointRounding.AwayFromZero),
-                    currency.Nominal,
-                    currency.RateDate,
-                    addedAtByCode[entry.Code]);
-            })
-            .ToArray();
+                // Запись избранного существует, но курс отсутствует (currency без каталога либо
+                // запись старше каталога). Не должно происходить благодаря FK, но обрабатывается
+                // на всякий случай.
+                missingCodes.Add(entry.Code);
+                continue;
+            }
 
-        var missingCodes = orderedFavorites
-            .Where(entry => !currencyByCode.ContainsKey(entry.Code))
-            .Select(entry => entry.Code)
-            .ToArray();
+            var rate = entry.Rate;
+            items.Add(new CurrencyRateDto(
+                rate.Code,
+                rate.Name,
+                Math.Round(rate.Rate, DisplayRateDecimals, MidpointRounding.AwayFromZero),
+                rate.Nominal,
+                rate.RateDate,
+                entry.AddedAt));
+        }
 
-        DateOnly? asOf = items.Length == 0
-            ? (DateOnly?)null
+        DateOnly? asOf = items.Count == 0
+            ? null
             : items.Max(item => item.RateDate);
 
         return Result<UserCurrencyRatesView>.Ok(

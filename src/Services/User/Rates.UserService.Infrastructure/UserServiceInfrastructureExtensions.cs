@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rates.BuildingBlocks.Domain;
+using Rates.BuildingBlocks.Application;
+using Rates.BuildingBlocks.Infrastructure.Security;
+using Rates.BuildingBlocks.Persistence;
 using Rates.UserService.Application;
 using Rates.UserService.Infrastructure.Auth;
 using Rates.UserService.Infrastructure.Persistence;
@@ -9,12 +10,13 @@ using Rates.UserService.Infrastructure.Persistence;
 namespace Rates.UserService.Infrastructure;
 
 /// <summary>
-/// Подключает инфраструктуру UserService: EF-контекст, репозитории, auth-сервисы
-/// (JWT, refresh-токены, хэширование паролей) и небольшую абстракцию часов.
+/// Подключает инфраструктуру UserService: общий <see cref="RatesDbContext"/>,
+/// репозитории пользователей, избранного и refresh-токенов, адаптер
+/// <see cref="ICurrencyLookup"/>, auth-сервисы и BCrypt-хэшер.
 /// </summary>
 public static class UserServiceInfrastructureExtensions
 {
-    public const string IdentityConnectionStringName = "IdentityDb";
+    private const string RatesConnectionStringName = "Rates";
 
     public static IServiceCollection AddRatesUserInfrastructure(
         this IServiceCollection services,
@@ -23,49 +25,34 @@ public static class UserServiceInfrastructureExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var connectionString = configuration.GetConnectionString(IdentityConnectionStringName)
+        var connectionString = configuration.GetConnectionString(RatesConnectionStringName)
             ?? throw new InvalidOperationException(
-                $"Connection string '{IdentityConnectionStringName}' is required for UserService.");
+                $"Connection string '{RatesConnectionStringName}' is required for UserService.");
 
-        services.AddDbContext<IdentityDbContext>(options =>
-        {
-            options.UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
-            });
-        });
+        services.AddDbContext<RatesDbContext>(options => options.UseRatesNpgsql(connectionString));
 
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IdentityDbContext>());
-        services.AddScoped<IUnitOfWorkFactory>(sp => new EfUnitOfWorkFactory(sp.GetRequiredService<IdentityDbContext>()));
+        services.AddScoped<IUnitOfWorkFactory>(sp => new EfUnitOfWorkFactory(sp.GetRequiredService<RatesDbContext>()));
 
-        // Репозитории для application-слоя.
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<UserRepository>();
-        services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
         services.AddScoped<IFavoritesRepository, EfFavoritesRepository>();
+        services.AddScoped<IRefreshTokenRepository, EfRefreshTokenRepository>();
 
-        // Инфраструктурные одиночки.
+        services.AddScoped<ICurrencyLookup, CurrencyLookupAdapter>();
+
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton<Rates.UserService.Application.IPasswordHasher, PasswordHasherAdapter>();
+        services.AddSingleton<Application.IPasswordHasher, Rates.UserService.Application.Auth.PasswordHasherAdapter>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();
-        services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+        services.AddSingleton<Rates.UserService.Application.Auth.IRefreshTokenService,
+            Rates.UserService.Application.Auth.RefreshTokenService>();
         services.AddSingleton<Rates.BuildingBlocks.Infrastructure.Security.IPasswordHasher,
-            Rates.BuildingBlocks.Infrastructure.Security.BCryptPasswordHasher>();
+            BCryptPasswordHasher>();
 
         return services;
     }
 
-    /// <summary>Адаптер от <see cref="IUnitOfWorkFactory"/> к EF Core DbContext.</summary>
-    private sealed class EfUnitOfWorkFactory : IUnitOfWorkFactory
+    private sealed class EfUnitOfWorkFactory(RatesDbContext db) : IUnitOfWorkFactory
     {
-        private readonly IdentityDbContext _db;
-
-        public EfUnitOfWorkFactory(IdentityDbContext db)
-        {
-            _db = db;
-        }
-
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken) =>
-            _db.SaveChangesAsync(cancellationToken);
+            db.SaveChangesAsync(cancellationToken);
     }
 }

@@ -14,8 +14,6 @@ namespace Rates.BuildingBlocks.Infrastructure.Security;
 public interface IJwtTokenService
 {
     (string Token, DateTimeOffset ExpiresAt) IssueAccessToken(Guid userId, string name);
-
-    TokenValidationParameters GetValidationParameters();
 }
 
 public sealed class JwtTokenService : IJwtTokenService
@@ -26,11 +24,9 @@ public sealed class JwtTokenService : IJwtTokenService
     public JwtTokenService(IOptions<JwtOptions> options)
     {
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
-        if (string.IsNullOrWhiteSpace(_options.SigningKey) || _options.SigningKey.Length < 32)
-        {
-            throw new InvalidOperationException(
-                "Jwt:SigningKey must be at least 32 characters long. Set it via configuration or a secret manager.");
-        }
+        JwtAuthenticationExtensions.EnsureValidSigningKey(
+            _options.SigningKey,
+            isDevelopment: IsDevelopment());
     }
 
     public (string Token, DateTimeOffset ExpiresAt) IssueAccessToken(Guid userId, string name)
@@ -77,5 +73,12 @@ public sealed class JwtTokenService : IJwtTokenService
             NameClaimType = JwtRegisteredClaimNames.UniqueName,
             RoleClaimType = ClaimTypes.Role,
         };
+    }
+
+    private static bool IsDevelopment()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+        return string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase);
     }
 }

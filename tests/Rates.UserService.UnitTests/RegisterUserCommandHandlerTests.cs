@@ -1,13 +1,16 @@
 using FluentAssertions;
+using Npgsql;
+using Rates.BuildingBlocks.Application;
 using Rates.UserService.Application;
 using Rates.UserService.Application.Auth;
+using Microsoft.EntityFrameworkCore;
 
 namespace Rates.UserService.UnitTests;
 
 public sealed class RegisterUserCommandHandlerTests
 {
     [Fact]
-    public async Task Returns_conflict_when_user_already_exists()
+    public async Task Returns_conflict_when_unique_index_violated()
     {
         var existing = DomainFixture.CreateUser("alice");
         var users = new InMemoryUserRepository(existing);
@@ -16,9 +19,10 @@ public sealed class RegisterUserCommandHandlerTests
         var accessTokens = new FakeAccessTokenService();
         var refreshService = new FakeRefreshTokenService();
         var clock = new FixedClock(DateTimeOffset.UtcNow);
+        var uow = new ThrowingUniqueViolationUnitOfWork();
 
         var handler = new RegisterUserCommandHandler(
-            users, refreshTokens, passwordHasher, accessTokens, refreshService, clock, new NoopUnitOfWork());
+            users, refreshTokens, passwordHasher, accessTokens, refreshService, clock, uow);
 
         var result = await handler.Handle(new RegisterUserCommand("alice", "secret123"), CancellationToken.None);
 
@@ -53,8 +57,7 @@ internal static class DomainFixture
 {
     public static Domain.User CreateUser(string name)
     {
-        var user = Domain.User.Create(name, "hash", DateTimeOffset.UtcNow);
-        return user;
+        return Domain.User.Create(name, "hash", DateTimeOffset.UtcNow);
     }
 }
 
@@ -128,4 +131,19 @@ internal sealed class FixedClock : IClock
 internal sealed class NoopUnitOfWork : IUnitOfWorkFactory
 {
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken) => Task.FromResult(0);
+}
+
+/// <summary>
+/// Имитирует гонку регистрации: сохранение пользователя бросает <see cref="DbUpdateException"/>
+/// с вложенным <see cref="PostgresException"/> SQLSTATE 23505. Handler должен распознать
+/// такой случай и вернуть <c>Error.Conflict("user_already_exists")</c>, а не 500.
+/// </summary>
+internal sealed class ThrowingUniqueViolationUnitOfWork : IUnitOfWorkFactory
+{
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        var pg = new PostgresException("duplicate key value violates unique constraint \"ix_user_name\"", "ERROR",
+            "ERROR", "23505");
+        throw new DbUpdateException("simulated unique violation", pg);
+    }
 }

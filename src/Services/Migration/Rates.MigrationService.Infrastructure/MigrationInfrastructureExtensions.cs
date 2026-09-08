@@ -1,20 +1,17 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rates.FinanceService.Infrastructure.Persistence;
-using Rates.UserService.Infrastructure.Persistence;
+using Rates.BuildingBlocks.Persistence;
 
 namespace Rates.MigrationService.Infrastructure;
 
 /// <summary>
-/// Регистрирует оба EF-контекста, которые нужны миграционному хосту. Таблицы и схемы
-/// объявляются per-service-контекстами; хост миграций владеет лишь жизненным циклом
-/// <c>Database.MigrateAsync()</c>.
+/// Подключает общий контекст общей БД к миграционному сервису. Миграционный хост
+/// применяет <c>Database.MigrateAsync()</c> к одной базе, в которой все таблицы
+/// платформы уже знают друг о друге.
 /// </summary>
 public static class MigrationInfrastructureExtensions
 {
-    public const string IdentityConnectionStringName = "IdentityDb";
-    public const string FinanceConnectionStringName = "FinanceDb";
+    public const string RatesConnectionStringName = "Rates";
 
     public static IServiceCollection AddRatesMigrationInfrastructure(
         this IServiceCollection services,
@@ -23,36 +20,16 @@ public static class MigrationInfrastructureExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var identityConnection = configuration.GetConnectionString(IdentityConnectionStringName)
+        var ratesConnection = configuration.GetConnectionString(RatesConnectionStringName)
             ?? throw new InvalidOperationException(
-                $"Connection string '{IdentityConnectionStringName}' is required for MigrationService.");
+                $"Connection string '{RatesConnectionStringName}' is required for MigrationService.");
 
-        var financeConnection = configuration.GetConnectionString(FinanceConnectionStringName)
-            ?? throw new InvalidOperationException(
-                $"Connection string '{FinanceConnectionStringName}' is required for MigrationService.");
+        services.AddDbContext<RatesDbContext>(options => options.UseRatesNpgsql(ratesConnection));
 
-        services.AddDbContext<IdentityDbContext>(options =>
-        {
-            options.UseNpgsql(identityConnection, npgsql =>
-            {
-                npgsql.MigrationsHistoryTable("__ef_migrations_history", IdentityDbContext.SchemaName);
-            });
-        });
-
-        services.AddDbContext<FinanceDbContext>(options =>
-        {
-            options.UseNpgsql(financeConnection, npgsql =>
-            {
-                npgsql.MigrationsHistoryTable("__ef_migrations_history", FinanceDbContext.SchemaName);
-            });
-        });
-
-        // Исполнитель миграций перечисляет все экземпляры DbContext через DI. EF Core
-        // регистрирует только конкретные типы, поэтому пробрасываем каждый контекст к его
-        // базовому типу.
-        services.AddScoped<DbContext>(sp => sp.GetRequiredService<IdentityDbContext>());
-        services.AddScoped<DbContext>(sp => sp.GetRequiredService<FinanceDbContext>());
-
+        // Хост миграций владеет только жизненным циклом MigrateAsync. Конкуренция за
+        // миграции нейтрализуется на уровне docker-compose: контейнеры стартуют
+        // последовательно через depends_on: service_completed_successfully, поэтому два
+        // экземпляра мигратора одновременно не запускаются.
         return services;
     }
 }

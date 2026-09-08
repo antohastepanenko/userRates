@@ -14,9 +14,8 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\Rates.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Domain\Rates.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\Rates.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Rates.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\Rates.MigrationService.Application\Rates.MigrationService.Application.csproj" />
-    <ProjectReference Include="..\..\User\Rates.UserService.Infrastructure\Rates.UserService.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Finance\Rates.FinanceService.Infrastructure\Rates.FinanceService.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,7 +17,7 @@ public sealed class User : AggregateRoot<Guid>
         UpdatedAt = createdAt;
     }
 
-    /// <summary>Беспараметрический конструктор для EF Core. Не использовать напрямую.</summary>
+    /// <summary>Конструктор без параметров для EF Core. Не использовать напрямую.</summary>
     private User()
         : base(Guid.Empty)
     {
@@ -37,19 +37,5 @@ public sealed class User : AggregateRoot<Guid>
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
         return new User(Guid.NewGuid(), name, passwordHash, now);
-    }
-
-    public void Rename(string name, DateTimeOffset now)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        Name = name;
-        UpdatedAt = now;
-    }
-
-    public void RotatePassword(string newPasswordHash, DateTimeOffset now)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(newPasswordHash);
-        PasswordHash = newPasswordHash;
-        UpdatedAt = now;
     }
 }

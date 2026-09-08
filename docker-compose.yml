@@ -29,8 +29,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      ConnectionStrings__IdentityDb: "Host=postgres;Database=rates_identity;Username=rates;Password=rates"
-      ConnectionStrings__FinanceDb: "Host=postgres;Database=rates_finance;Username=rates;Password=rates"
+      ConnectionStrings__Rates: "Host=postgres;Database=rates;Username=rates;Password=rates"
       Logging__LogLevel__Default: Information
     restart: on-failure
 
@@ -46,13 +45,12 @@ services:
         condition: service_completed_successfully
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__IdentityDb: "Host=postgres;Database=rates_identity;Username=rates;Password=rates"
+      ConnectionStrings__Rates: "Host=postgres;Database=rates;Username=rates;Password=rates"
       Jwt__Issuer: "rates"
       Jwt__Audience: "rates.api"
       Jwt__SigningKey: "${JWT_SIGNING_KEY:-dev-only-do-not-use-in-production-1234567890}"
       Jwt__AccessTokenLifetimeMinutes: 15
       Jwt__RefreshTokenLifetimeDays: 30
-      InternalServices__SharedToken: "${INTERNAL_SERVICE_TOKEN:-dev-only-internal-service-token-1234567890}"
     ports:
       - "5101:8080"
 
@@ -70,12 +68,12 @@ services:
         condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__FinanceDb: "Host=postgres;Database=rates_finance;Username=rates;Password=rates"
+      ConnectionStrings__Rates: "Host=postgres;Database=rates;Username=rates;Password=rates"
       Jwt__Issuer: "rates"
       Jwt__Audience: "rates.api"
       Jwt__SigningKey: "${JWT_SIGNING_KEY:-dev-only-do-not-use-in-production-1234567890}"
-      ServiceEndpoints__UserServiceBaseUrl: "http://user-api:8080"
-      InternalServices__SharedToken: "${INTERNAL_SERVICE_TOKEN:-dev-only-internal-service-token-1234567890}"
+      Jwt__AccessTokenLifetimeMinutes: 15
+      Jwt__RefreshTokenLifetimeDays: 30
     ports:
       - "5102:8080"
 
@@ -91,7 +89,7 @@ services:
         condition: service_completed_successfully
     environment:
       DOTNET_ENVIRONMENT: Development
-      ConnectionStrings__FinanceDb: "Host=postgres;Database=rates_finance;Username=rates;Password=rates"
+      ConnectionStrings__Rates: "Host=postgres;Database=rates;Username=rates;Password=rates"
       CbrRates__Url: "http://www.cbr.ru/scripts/XML_daily.asp"
       CbrRates__UpdateInterval: "01:00:00"
       CbrRates__RunOnStartup: "true"

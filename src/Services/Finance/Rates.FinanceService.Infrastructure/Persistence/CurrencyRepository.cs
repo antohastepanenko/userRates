@@ -1,86 +1,145 @@
 using Microsoft.EntityFrameworkCore;
-using Rates.BuildingBlocks.Domain;
+using Rates.BuildingBlocks.Persistence;
+using Rates.FinanceService.Application.Cbr;
+using Rates.FinanceService.Application.Currencies;
 using Rates.FinanceService.Domain;
 
 namespace Rates.FinanceService.Infrastructure.Persistence;
 
 /// <summary>
-/// Репозиторий для агрегатов <see cref="Currency"/>. RatesWorker использует UpsertAsync,
-/// чтобы сохранять идемпотентность записей при повторных опросах ЦБ.
+/// Репозиторий каталога валют FinanceService. Инкапсулирует write-операции
+/// (upsert через <see cref="ICurrencySyncRepository"/>) и read-операции
+/// (<see cref="ICurrencyRateReader"/>) поверх общего контекста.
 /// </summary>
-public sealed class CurrencyRepository : IRepository<Currency>, ICurrencyLookup
+public sealed class CurrencyRepository(RatesDbContext db) : ICurrencySyncRepository
 {
-    private readonly FinanceDbContext _db;
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
 
-    public CurrencyRepository(FinanceDbContext db)
+    public async Task<int> UpsertManyAsync(
+        IReadOnlyList<CbrCurrencyEntry> entries,
+        DateOnly rateDate,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
-    }
+        ArgumentNullException.ThrowIfNull(entries);
 
-    public Task<Currency?> FindAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _db.Currencies.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
-
-    public async Task AddAsync(Currency entity, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(entity);
-        await _db.Currencies.AddAsync(entity, cancellationToken);
-    }
-
-    public void Remove(Currency entity)
-    {
-        ArgumentNullException.ThrowIfNull(entity);
-        _db.Currencies.Remove(entity);
-    }
-
-    public Task<Currency?> FindByCodeAsync(string code, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(code))
+        var count = 0;
+        foreach (var entry in entries)
         {
-            return Task.FromResult<Currency?>(null);
+            var normalized = entry.CharCode.Trim().ToUpperInvariant();
+            var existing = await _db.Currencies
+                .FirstOrDefaultAsync(c => c.Code == normalized, cancellationToken);
+
+            var currency = Currency.Upsert(
+                normalized,
+                entry.Name,
+                entry.NormalizedRate,
+                entry.Nominal,
+                rateDate,
+                now);
+
+            if (existing is null)
+            {
+                await _db.Currencies.AddAsync(currency, cancellationToken);
+            }
+            else
+            {
+                existing.Update(currency.Rate, currency.Nominal, currency.RateDate, currency.UpdatedAt);
+            }
+
+            count++;
         }
 
-        var normalized = code.Trim().ToUpperInvariant();
-        return _db.Currencies.FirstOrDefaultAsync(c => c.Code == normalized, cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
+        return count;
     }
+}
 
-    public Task<List<Currency>> ListByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken cancellationToken = default)
+/// <summary>
+/// Адаптер read-порта application-слоя поверх EF Core поверх общего контекста.
+/// </summary>
+public sealed class CurrencyRateReader(RatesDbContext db) : ICurrencyRateReader
+{
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
+
+    public async Task<IReadOnlyList<Currency>> ListByCodesAsync(
+        IReadOnlyCollection<string> codes,
+        CancellationToken cancellationToken)
     {
-        if (codes is null || codes.Count == 0)
+        if (codes.Count == 0)
         {
-            return Task.FromResult(new List<Currency>());
+            return Array.Empty<Currency>();
         }
 
         var normalized = codes.Select(c => c.Trim().ToUpperInvariant()).ToArray();
-        return _db.Currencies
+        return await _db.Currencies
             .Where(c => normalized.Contains(c.Code))
             .OrderBy(c => c.Code)
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Возвращает по одной самой свежей записи на каждый код валюты. Если у одного кода
-    /// есть несколько записей с одинаковой максимальной датой, берётся запись с максимальным
-    /// <c>updated_at</c>
-    /// </summary>
-    public async Task<List<Currency>> ListLatestAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Currency>> ListLatestAsync(CancellationToken cancellationToken)
     {
-        var query = _db.Currencies
+        var list = await _db.Currencies
             .AsNoTracking()
             .Where(c => !_db.Currencies.Any(c2 =>
                 c2.Code == c.Code &&
                 (c2.RateDate > c.RateDate ||
                  (c2.RateDate == c.RateDate && c2.UpdatedAt > c.UpdatedAt) ||
                  (c2.RateDate == c.RateDate && c2.UpdatedAt == c.UpdatedAt && c2.Id > c.Id))))
-            .OrderBy(c => c.Code);
-
-        var currencies = await query.ToListAsync(cancellationToken);
-        return currencies;
+            .OrderBy(c => c.Code)
+            .ToListAsync(cancellationToken);
+        return list;
     }
 }
 
-public interface ICurrencyLookup
+/// <summary>
+/// Адаптер read-порта <see cref="Rates.FinanceService.Application.Currencies.IFavoritesLookup"/>.
+/// Делает прямой JOIN к таблице избранного в общей БД. Никакого HTTP-вызова
+/// в UserService больше не требуется.
+/// </summary>
+public sealed class FavoritesLookupAdapter(RatesDbContext db) : IFavoritesLookup
 {
-    Task<Currency?> FindByCodeAsync(string code, CancellationToken cancellationToken = default);
-    Task<List<Currency>> ListByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken cancellationToken = default);
-    Task<List<Currency>> ListLatestAsync(CancellationToken cancellationToken = default);
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
+
+    public async Task<IReadOnlyList<UserFavoriteWithRate>> ListByUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            return [];
+        }
+
+        return await _db.UserFavoriteCurrencies
+            .AsNoTracking()
+            .Where(f => f.UserId == userId)
+            .OrderBy(f => f.CurrencyCode)
+            .GroupJoin(
+                _db.Currencies,
+                f => f.CurrencyCode,
+                c => c.Code,
+                (f, currencies) => new { f, currencies })
+            .SelectMany(
+                x => x.currencies
+                    .Where(c => !x.currencies.Any(c2 =>
+                        c2.Code == c.Code &&
+                        (c2.RateDate > c.RateDate ||
+                         (c2.RateDate == c.RateDate && c2.UpdatedAt > c.UpdatedAt) ||
+                         (c2.RateDate == c.RateDate && c2.UpdatedAt == c.UpdatedAt && c2.Id > c.Id))))
+                    .Take(1)
+                    .DefaultIfEmpty(),
+                (x, c) => new UserFavoriteWithRate(
+                    x.f.CurrencyCode,
+                    x.f.AddedAt,
+                    c == null
+                        ? null
+                        : new CurrencyRateSnapshot(
+                            c.Code,
+                            c.Name,
+                            c.Rate,
+                            c.Nominal,
+                            c.RateDate)))
+            .ToListAsync(cancellationToken);
+    }
 }

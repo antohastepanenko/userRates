@@ -9,12 +9,15 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="MediatR.Contracts" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\Rates.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Contracts\Rates.BuildingBlocks.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Domain\Rates.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\Rates.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\Rates.UserService.Domain\Rates.UserService.Domain.csproj" />
   </ItemGroup>
 

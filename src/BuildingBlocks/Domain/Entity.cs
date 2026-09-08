@@ -1,38 +1,13 @@
 namespace Rates.BuildingBlocks.Domain;
 
 /// <summary>
-/// Маркер для любой сущности, отслеживаемой <see cref="IRepository{TEntity}"/>.
-/// Сущности обладают идентичностью и жизненным циклом; они не взаимозаменяемы,
-/// в отличие от объектов-значений.
+/// Маркер для любой сущности, отслеживаемой репозиторием. Сущности обладают идентичностью
+/// и жизненным циклом; они не взаимозаменяемы, в отличие от объектов-значений.
 /// </summary>
-public abstract class Entity<TId>
+public abstract class Entity<TId>(TId id)
     where TId : notnull
 {
-    protected Entity(TId id)
-    {
-        Id = id;
-    }
-
-    /// <summary>Суррогатный идентификатор. Доменные события не участвуют в сравнении.</summary>
-    public TId Id { get; protected set; }
-
-    private readonly List<IDomainEvent> _domainEvents = new();
-
-    /// <summary>
-    /// Доменные события, поднятые этим агрегатом в рамках текущей единицы работы.
-    /// </summary>
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
-
-    protected void RaiseDomainEvent(IDomainEvent @event)
-    {
-        ArgumentNullException.ThrowIfNull(@event);
-        _domainEvents.Add(@event);
-    }
-
-    public void ClearDomainEvents()
-    {
-        _domainEvents.Clear();
-    }
+    public TId Id { get; protected set; } = id;
 
     public override bool Equals(object? obj) =>
         obj is Entity<TId> other && EqualityComparer<TId>.Default.Equals(Id, other.Id);
@@ -40,19 +15,13 @@ public abstract class Entity<TId>
     public override int GetHashCode() => EqualityComparer<TId>.Default.GetHashCode(Id!);
 
     public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
-        left is null ? right is null : left.Equals(right);
+        left?.Equals(right) ?? right is null;
 
     public static bool operator !=(Entity<TId>? left, Entity<TId>? right) => !(left == right);
 }
 
 /// <summary>
-/// Маркер для корневых агрегатов — сущностей, владеющих транзакционной границей согласованности.
+/// Корневой агрегат — сущность, владеющая транзакционной границей согласованности.
 /// </summary>
-public abstract class AggregateRoot<TId> : Entity<TId>
-    where TId : notnull
-{
-    protected AggregateRoot(TId id)
-        : base(id)
-    {
-    }
-}
+public abstract class AggregateRoot<TId>(TId id) : Entity<TId>(id)
+    where TId : notnull;

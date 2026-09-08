@@ -7,8 +7,8 @@ using Rates.BuildingBlocks.Infrastructure.Security;
 namespace Rates.BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Универсальный помощник, который регистрирует общие инфраструктурные компоненты,
-/// необходимые любому сервису: привязку опций, JWT-сервис, хэшер паролей и HTTP-адаптер
+/// Универсальный помощник, который регистрирует общие инфраструктурные ко��поненты,
+/// необходимые любому сервису: привязку опций, JWT-сервис, BCrypt-хэшер и HTTP-адаптер
 /// текущего пользователя.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
@@ -22,13 +22,10 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<CbrOptions>(configuration.GetSection(CbrOptions.SectionName));
-        services.Configure<ServiceEndpointsOptions>(configuration.GetSection(ServiceEndpointsOptions.SectionName));
-        services.Configure<InternalServiceOptions>(configuration.GetSection(InternalServiceOptions.SectionName));
 
         services.AddHttpContextAccessor();
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
-        services.AddSingleton<IInternalServiceTokenValidator, InternalServiceTokenValidator>();
         services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 
         return services;

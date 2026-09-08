@@ -3,14 +3,9 @@ using Rates.UserService.Domain;
 namespace Rates.UserService.Application;
 
 /// <summary>
-/// Внутренние порты, необходимые обработчикам auth-сценариев. Реализуются в Infrastructure;
-/// это единственная абстракция, от которой зависит application-слой.
+/// Внутренние порты, необходимые обработчикам UserService. Реализуются
+/// в Infrastructure.
 /// </summary>
-public interface IUnitOfWorkFactory
-{
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken);
-}
-
 public interface IUserRepository
 {
     Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken);
@@ -20,16 +15,11 @@ public interface IUserRepository
 
 public interface IFavoritesRepository
 {
-    Task<IReadOnlyList<string>> ListCodesAsync(Guid userId, CancellationToken cancellationToken);
-
     /// <summary>
     /// Возвращает избранные валюты пользователя вместе с датой добавления. Используется
-    /// Finance-сервисом, чтобы вместе с курсом показать в UI «когда валюта добавлена».
+    /// UI UserService для отображения списка избранного с метаданными.
     /// </summary>
-    Task<IReadOnlyList<UserFavoriteSummary>> ListWithAddedAtAsync(
-        Guid userId,
-        CancellationToken cancellationToken);
-
+    Task<IReadOnlyList<UserFavoriteSummary>> ListWithAddedAtAsync(Guid userId, CancellationToken cancellationToken);
     Task AddIfMissingAsync(Guid userId, string code, DateTimeOffset now, CancellationToken cancellationToken);
     Task<bool> RemoveAsync(Guid userId, string code, CancellationToken cancellationToken);
 }
@@ -43,6 +33,15 @@ public interface IRefreshTokenRepository
     Task RevokeAsync(Guid tokenId, DateTimeOffset now, Guid? replacedById, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Read-порт для проверки существования валюты в общей БД. Реализация
+/// в Infrastructure читает общий <c>currency</c> через EF Core.
+/// </summary>
+public interface ICurrencyLookup
+{
+    Task<bool> ExistsAsync(string code, CancellationToken cancellationToken);
+}
+
 public interface IPasswordHasher
 {
     string Hash(string password);
@@ -52,11 +51,6 @@ public interface IPasswordHasher
 public interface IAccessTokenService
 {
     (string Token, DateTimeOffset ExpiresAt) Issue(Guid userId, string name);
-}
-
-public interface IRefreshTokenService
-{
-    (RefreshToken Token, string Plain) Issue(Guid userId);
 }
 
 public interface IClock

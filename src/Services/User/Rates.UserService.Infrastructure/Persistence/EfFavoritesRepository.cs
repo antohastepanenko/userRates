@@ -1,22 +1,18 @@
 using Microsoft.EntityFrameworkCore;
+using Rates.BuildingBlocks.Persistence;
 using Rates.UserService.Application;
 using Rates.UserService.Domain;
 
 namespace Rates.UserService.Infrastructure.Persistence;
 
 /// <summary>
-/// Реализация персистентности избранного на базе EF Core. Работает с отдельной таблицей
-/// <c>user_favorite_currency</c>, а не с навигацией на строке <c>user</c>, что упрощает
-/// отслеживание изменений EF Core и избавляет от устаревших токенов конкурентности.
+/// Реализация <see cref="IFavoritesRepository"/> поверх общего <see cref="RatesDbContext"/>.
+/// FK на <c>currency.code</c> гарантирует, что в избранное попадёт только реальный код;
+/// нарушение FK Postgres вернёт как <c>DbUpdateException</c> с SQLSTATE 23503.
 /// </summary>
-public sealed class EfFavoritesRepository : IFavoritesRepository
+public sealed class EfFavoritesRepository(RatesDbContext db) : IFavoritesRepository
 {
-    private readonly IdentityDbContext _db;
-
-    public EfFavoritesRepository(IdentityDbContext db)
-    {
-        _db = db ?? throw new ArgumentNullException(nameof(db));
-    }
+    private readonly RatesDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
 
     public async Task<IReadOnlyList<string>> ListCodesAsync(Guid userId, CancellationToken cancellationToken)
     {
